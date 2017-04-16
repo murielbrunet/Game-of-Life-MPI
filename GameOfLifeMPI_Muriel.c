@@ -1,4 +1,10 @@
 /*  
+  Edited by Muriel Brunet
+  Parallel and Distributed Computing
+  CSC 352 Smith College 
+  Spring 2017
+
+
  Game of life
  D. Thiebaut
  This is the MPI version of GameOfLife.c, for MPI, for 2 Processes,
@@ -22,11 +28,6 @@
 
  mpicc.mpich -o GameOfLifeMPI2 GameOfLifeMPI2.c
  mpiexec.mpich -n 2 ./GameOfLifeMPI2
- 
- or 
-
- mpicc -o GameOfLifeMPI2 GameOfLifeMPI2.c
- mpirun -np 2 ./GameOfLifeMPI2
 
 */
 #include <stdio.h>
@@ -74,7 +75,7 @@ char  *PATTERN[NUMBERROWS] = {
   "                                                                                  ",
   "                                                                                  " 
 };
-int ROWSIZE = strlen( "                                                                                  ") + 1;
+int ROWSIZE = (int) strlen( "                                                                                  ") + 1;
 
 //------------------------------- prototypes --------------------------------
 void life( char**, char**, int );
@@ -97,60 +98,6 @@ void initDishes( int rank ) {
   }
 }
 
-
-// --------------------------------------------------------------------------
-// initDishes2
-// inits the dishes (current and future)
-// (Buggy: attempts to declare only 1 half of the array, plus boundary
-//  rows, depending on rank.  Needs a bit more debugging...)
-void initDishes2( int rank ) {
-  int i;
-
-  // init to null all entries.  This way we'll be
-  // able to tell if a row belongs to us or not.
-  for ( i=0; i<NUMBERROWS; i++ ) {
-    DISH0[i] = NULL;
-    DISH1[i] = NULL;
-  }
-
-  //--- Init RANK 0 rows ---
-  if ( rank == 0 ) {
-    //--- initialize dishes with lower half of pattern ---
-    for (i = 0; i< NUMBERROWS/2+1; i++ )  {
-    
-      DISH0[i] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-      strcpy( DISH0[i], PATTERN[i] );
-
-      DISH1[i] = (char *) malloc( (strlen( DISH0[0] )+1) * sizeof( char )  );
-      strcpy( DISH1[i], DISH0[i] );
-    }
-
-    //--- initialize top row of dishes, as they are neighbors of Row 0 ---
-    DISH0[NUMBERROWS-1] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH0[NUMBERROWS-1], PATTERN[NUMBERROWS-1] );
-    DISH1[NUMBERROWS-1] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH1[NUMBERROWS-1], PATTERN[NUMBERROWS-1] );
-  }
-
-  //--- Init RANK 1 rows ---
-  if ( rank == 1 ) {
-    //--- initialize dishes with upper half of pattern ---                                                                               
-    for (i = NUMBERROWS/2-1; i< NUMBERROWS; i++ )  {
-
-      DISH0[i] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-      strcpy( DISH0[i], PATTERN[i] );
-
-      DISH1[i] = (char *) malloc( (strlen( DISH0[0] )+1) * sizeof( char )  );
-      strcpy( DISH1[i], DISH0[i] );
-    }
-
-    //--- initialize bottom row of dishes, as they are neighbors of top row  ---                                                       
-    DISH0[0] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH0[0], PATTERN[0] );
-    DISH1[0] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH1[0], PATTERN[01] );
-  }
-}
 
 
 
@@ -203,29 +150,49 @@ void check( char** dish, char** future ) {
 }
 
 // --------------------------------------------------------------------------
-void  life( char** dish, char** newGen, int rank ) {
+void  life( char** dish, char** newGen, int rank, int n ) {
   /*
    * Given an array of string representing the current population of cells
    * in a petri dish, computes the new generation of cells according to
    * the rules of the game. A new array of strings is returned.
    */
-  int i, j, row;
-  int rowLength = strlen( dish[0] );
+  int i, j, k, row;
+  int rowLength = (int) strlen( dish[0] );
   int dishLength = NUMBERROWS;
   
   int lowerRow, upperRow;
 
-  //--- slice the array into two halves.  Rank 0 is lower half, ---
-  //--  Rank 1 is upper half.                                   ---
-  if ( rank == 0 ) {
-    lowerRow = 0;
-    upperRow = NUMBERROWS/2;
-  }
-  if ( rank == 1 ) {
-    lowerRow = NUMBERROWS/2;
-    upperRow = NUMBERROWS;
-  }
+  // --- slice the array into two halves.  Rank 0 is lower half, ---
+  // --  Rank 1 is upper half.                                   ---
+  // if ( rank == 0 ) {
+  //   lowerRow = 0;
+  //   upperRow = NUMBERROWS/2;
+  // }
+  // if ( rank == 1 ) {
+  //   lowerRow = NUMBERROWS/2;
+  //   upperRow = NUMBERROWS;
+  // }
   
+  //--- slice the dish into n parts                                   ---
+  //--- loop through and asign lowerRow and upperRow to each process  ---
+  //--- based on ranking                                              ---
+
+  int sizeOfPiece = NUMBERROWS/n; //n hasn't been defined yet
+
+  lowerRow = 0;
+  upperRow = sizeOfPiece;
+  for(k = 0; k <= n; k++){    
+    if(rank == k){  //if this is your rank, then keep the lowerRow and upperRow as they are
+      break;
+    }
+    lowerRow += sizeOfPiece;
+    upperRow += sizeOfPiece;
+  }
+
+
+
+
+
   for (row = lowerRow; row < upperRow; row++) {// each row
     
     if ( dish[row] == NULL )
@@ -248,7 +215,7 @@ void  life( char** dish, char** newGen, int rank ) {
         if (r == dishLength)
           realr = 0;
 
-        for (int j = i - 1; j <= i + 1; j++) {
+        for ( j = i - 1; j <= i + 1; j++) {
 
           // make sure we wrap around from left to right
           int realj = j;
@@ -287,6 +254,7 @@ void  life( char** dish, char** newGen, int rank ) {
 int main( int argc, char* argv[] ) {
   int gens = 3000;      // # of generations
   int i;
+  int n;                // # of processes/tasks
   char **dish, **future, **temp;
 
   //--- MPI Variables ---
@@ -299,11 +267,13 @@ int main( int argc, char* argv[] ) {
 
   //--- get number of tasks, and make sure it's 2 ---
   MPI_Comm_size( MPI_COMM_WORLD, &noTasks );
-  if ( noTasks != 2 ) {
-    printf( "Number of Processes/Tasks must be 2.  Number = %d\n\n", noTasks );
-    MPI_Finalize();
-    return 1;
-  }
+  n = noTasks;
+
+  // if ( noTasks != 2 ) {
+  //   printf( "Number of Processes/Tasks must be 2.  Number = %d\n\n", noTasks );
+  //   MPI_Finalize();
+  //   return 1;
+  // }
 
   //--- get rank ---
   MPI_Comm_rank( MPI_COMM_WORLD, &rank );
@@ -319,7 +289,7 @@ int main( int argc, char* argv[] ) {
   //--- clear screen ---
   cls();
 
-  print( dish, rank );          // # first generation, in petri dish
+  //print( dish, rank );          // # first generation, in petri dish
 
 
   // iterate over all generations
@@ -330,7 +300,7 @@ int main( int argc, char* argv[] ) {
 
     // apply the rules of life to the current population and 
     // generate the next generation.
-    life( dish, future, rank );
+    life( dish, future, rank , n );
 
     // display the new generation
     //print( dish, rank );
@@ -339,19 +309,23 @@ int main( int argc, char* argv[] ) {
     // remove this part to get full timing.
     //if (rank == 0 ) sleep( 1 );
 
-    if (rank==0 ) {
+    // if (rank==0 ) {
       //          buffer                #items   item-size src/dest tag   world  
-      MPI_Send( future[    0         ], ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD );
-      MPI_Send( future[NUMBERROWS/2-1], ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD );
-      MPI_Recv( future[NUMBERROWS-1],   ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD, &status );
-      MPI_Recv( future[NUMBERROWS/2],   ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD, &status );
-    }
-    if (rank==1 ) {
-      MPI_Recv( future[    0         ], ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD, &status );
-      MPI_Recv( future[NUMBERROWS/2-1], ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD, &status );
-      MPI_Send( future[NUMBERROWS-1],   ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD );
-      MPI_Send( future[NUMBERROWS/2],   ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD );
-    }
+    //   MPI_Send( future[    0         ], ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD );
+    //   MPI_Send( future[NUMBERROWS/2-1], ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD );
+    //   MPI_Recv( future[NUMBERROWS-1],   ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD, &status );
+    //   MPI_Recv( future[NUMBERROWS/2],   ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD, &status );
+    // }
+    // if (rank==1 ) {
+    //   MPI_Recv( future[    0         ], ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD, &status );
+    //   MPI_Recv( future[NUMBERROWS/2-1], ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD, &status );
+    //   MPI_Send( future[NUMBERROWS-1],   ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD );
+    //   MPI_Send( future[NUMBERROWS/2],   ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD );
+    // }
+
+    //--- if rank is odd, then send ---
+    //--- if rank is even, then receive ---
+
     // copy future to dish
     temp = dish;
     dish = future;

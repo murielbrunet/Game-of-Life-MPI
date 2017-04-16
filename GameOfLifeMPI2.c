@@ -22,11 +22,6 @@
 
  mpicc.mpich -o GameOfLifeMPI2 GameOfLifeMPI2.c
  mpiexec.mpich -n 2 ./GameOfLifeMPI2
- 
- or 
-
- mpicc -o GameOfLifeMPI2 GameOfLifeMPI2.c
- mpirun -np 2 ./GameOfLifeMPI2
 
 */
 #include <stdio.h>
@@ -74,7 +69,7 @@ char  *PATTERN[NUMBERROWS] = {
   "                                                                                  ",
   "                                                                                  " 
 };
-int ROWSIZE = strlen( "                                                                                  ") + 1;
+int ROWSIZE = (int) strlen( "                                                                                  ") + 1;
 
 //------------------------------- prototypes --------------------------------
 void life( char**, char**, int );
@@ -248,7 +243,7 @@ void  life( char** dish, char** newGen, int rank ) {
         if (r == dishLength)
           realr = 0;
 
-        for (int j = i - 1; j <= i + 1; j++) {
+        for ( j = i - 1; j <= i + 1; j++) {
 
           // make sure we wrap around from left to right
           int realj = j;
