@@ -1,4 +1,8 @@
 /*
+  Edited by Muriel Brunet
+  creates dish with 10,000 lines
+  prints them out to output file dish.txt
+
  initDish.c
  D. Thiebaut
 
@@ -73,15 +77,20 @@ char** createDish( int N ) {
 int main( int argc, char** argv ) {
   int i, N, length;
   char** dish;
+  FILE *fp;
+
+  //--- open file to save dish to ---
+  fp = fopen("dish.txt", "w");
 
   //--- define the number of lines wanted ---
-  N = 40;
+  N = 10000;
 
   //--- create an array of N lines ---
   dish = createDish( N );
 
-  //--- display it on the screen ---
+  //--- print to output file ---
   for (i=0; i < N; i++ ) 
-    printf( "%s\n", dish[i] );
+    fprintf( fp, "%s\n", dish[i] );
 
+  fclose(fp);
 }

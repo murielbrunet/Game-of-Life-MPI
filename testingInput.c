@@ -1,4 +1,6 @@
 /*  
+  TESTING TAKING IN INPUT FROM COMMAND LINE
+
  Game of life
  D. Thiebaut
  This is the MPI version of GameOfLife.c, for MPI, for 2 Processes,
