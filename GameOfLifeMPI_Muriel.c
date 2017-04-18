@@ -78,7 +78,7 @@ char  *PATTERN[NUMBERROWS] = {
 int ROWSIZE = (int) strlen( "                                                                                  ") + 1;
 
 //------------------------------- prototypes --------------------------------
-void life( char**, char**, int );
+void life( char**, char**, int , int, int );
 void initDishes( int  );
 void print( char **, int );
 
@@ -150,7 +150,7 @@ void check( char** dish, char** future ) {
 }
 
 // --------------------------------------------------------------------------
-void  life( char** dish, char** newGen, int rank, int n ) {
+void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
   /*
    * Given an array of string representing the current population of cells
    * in a petri dish, computes the new generation of cells according to
@@ -162,32 +162,21 @@ void  life( char** dish, char** newGen, int rank, int n ) {
   
   int lowerRow, upperRow;
 
-  // --- slice the array into two halves.  Rank 0 is lower half, ---
-  // --  Rank 1 is upper half.                                   ---
-  // if ( rank == 0 ) {
-  //   lowerRow = 0;
-  //   upperRow = NUMBERROWS/2;
-  // }
-  // if ( rank == 1 ) {
-  //   lowerRow = NUMBERROWS/2;
-  //   upperRow = NUMBERROWS;
-  // }
-  
   //--- slice the dish into n parts                                   ---
   //--- loop through and asign lowerRow and upperRow to each process  ---
   //--- based on ranking                                              ---
 
-  int sizeOfPiece = NUMBERROWS/n; //n hasn't been defined yet
+  // int sizeOfSection = NUMBERROWS/n; //n hasn't been defined yet
 
-  lowerRow = 0;
-  upperRow = sizeOfPiece;
-  for(k = 0; k <= n; k++){    
-    if(rank == k){  //if this is your rank, then keep the lowerRow and upperRow as they are
-      break;
-    }
-    lowerRow += sizeOfPiece;
-    upperRow += sizeOfPiece;
-  }
+  // lowerRow = 0;
+  // upperRow = sizeOfSection;
+  // for(k = 0; k <= n; k++){    
+  //   if(rank == k){  //if this is your rank, then keep the lowerRow and upperRow as they are
+  //     break;
+  //   }
+  //   lowerRow += sizeOfSection;
+  //   upperRow += sizeOfSection;
+  // }
 
 
 
@@ -253,7 +242,8 @@ void  life( char** dish, char** newGen, int rank, int n ) {
 // --------------------------------------------------------------------------
 int main( int argc, char* argv[] ) {
   int gens = 3000;      // # of generations
-  int i;
+  int i, nextProcess, prevProcess;
+  int sizeOfSection, lastRow, firstRow;
   int n;                // # of processes/tasks
   char **dish, **future, **temp;
 
@@ -267,13 +257,7 @@ int main( int argc, char* argv[] ) {
 
   //--- get number of tasks, and make sure it's 2 ---
   MPI_Comm_size( MPI_COMM_WORLD, &noTasks );
-  n = noTasks;
-
-  // if ( noTasks != 2 ) {
-  //   printf( "Number of Processes/Tasks must be 2.  Number = %d\n\n", noTasks );
-  //   MPI_Finalize();
-  //   return 1;
-  // }
+  n = noTasks; // number of tasks/processes
 
   //--- get rank ---
   MPI_Comm_rank( MPI_COMM_WORLD, &rank );
@@ -298,33 +282,34 @@ int main( int argc, char* argv[] ) {
     pos( 33+rank, 0 );
     printf( "Rank %d: Generation %d\n", rank, i );
 
+    sizeOfSection = NUMBERROWS/n;
+    firstRow =  sizeOfSection * rank; //give rows based on rank
+    lastRow = firstRow + sizeOfSection; //assign rows based on rank
+
     // apply the rules of life to the current population and 
     // generate the next generation.
-    life( dish, future, rank , n );
+    life( dish, future, rank , firstRow, lastRow );
 
     // display the new generation
     //print( dish, rank );
 
-    // add a bit of a delay to better see the visualization
-    // remove this part to get full timing.
-    //if (rank == 0 ) sleep( 1 );
-
-    // if (rank==0 ) {
-      //          buffer                #items   item-size src/dest tag   world  
-    //   MPI_Send( future[    0         ], ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD );
-    //   MPI_Send( future[NUMBERROWS/2-1], ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD );
-    //   MPI_Recv( future[NUMBERROWS-1],   ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD, &status );
-    //   MPI_Recv( future[NUMBERROWS/2],   ROWSIZE, MPI_CHAR,    1,     0,  MPI_COMM_WORLD, &status );
-    // }
-    // if (rank==1 ) {
-    //   MPI_Recv( future[    0         ], ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD, &status );
-    //   MPI_Recv( future[NUMBERROWS/2-1], ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD, &status );
-    //   MPI_Send( future[NUMBERROWS-1],   ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD );
-    //   MPI_Send( future[NUMBERROWS/2],   ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD );
-    // }
+    prevProcess = rank - 1;
+    nextProcess = rank + 1;
 
     //--- if rank is odd, then send ---
     //--- if rank is even, then receive ---
+    if(rank % 2 == 0){ //even
+      MPI_Send( future[firstRow],   ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
+      MPI_Send( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
+      MPI_Recv( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
+      MPI_Recv( future[firstRow],   ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
+    } else { //odd
+      MPI_Recv( future[firstRow],   ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD, &status );
+      MPI_Recv( future[lastRow-1],  ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD, &status );
+      MPI_Send( future[lastRow-1],  ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD );
+      MPI_Send( future[firstRow],   ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD );
+    }
+
 
     // copy future to dish
     temp = dish;
