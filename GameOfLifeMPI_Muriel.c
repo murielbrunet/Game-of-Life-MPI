@@ -160,8 +160,6 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
   int rowLength = (int) strlen( dish[0] );
   int dishLength = NUMBERROWS;
   
-  int lowerRow, upperRow;
-
   //--- slice the dish into n parts                                   ---
   //--- loop through and asign lowerRow and upperRow to each process  ---
   //--- based on ranking                                              ---
@@ -241,7 +239,7 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
 
 // --------------------------------------------------------------------------
 int main( int argc, char* argv[] ) {
-  int gens = 3000;      // # of generations
+  int gens = 30;      // # of generations
   int i, nextProcess, prevProcess;
   int sizeOfSection, lastRow, firstRow;
   int n;                // # of processes/tasks
@@ -292,9 +290,21 @@ int main( int argc, char* argv[] ) {
 
     // display the new generation
     //print( dish, rank );
+    // if(rank != 0){
+    //   prevProcess = n - 1 ;
+    // } else {
+    //   prevProcess = rank - 1 ;
+    // }
 
-    prevProcess = rank - 1;
+    // if(rank == n - 1){ //then give the next process in the circle will be process #0
+    //   nextProcess = 0;
+    // } else { 
+    //   nextProcess = rank + 1;
+    // }
+
+    prevProcess = rank - 1 ;
     nextProcess = rank + 1;
+
 
     //--- if rank is odd, then send ---
     //--- if rank is even, then receive ---
