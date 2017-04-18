@@ -26,8 +26,8 @@
 
  To compile and run, several different variants:
 
- mpicc.mpich -o GameOfLifeMPI2 GameOfLifeMPI2.c
- mpiexec.mpich -n 2 ./GameOfLifeMPI2
+ mpicc.mpich -o GameOfLifeMPI_Muriel GameOfLifeMPI_Muriel.c
+ mpiexec.mpich -n 2 ./GameOfLifeMPI_Muriel
 
 */
 #include <stdio.h>

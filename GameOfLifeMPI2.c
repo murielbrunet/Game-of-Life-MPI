@@ -92,63 +92,6 @@ void initDishes( int rank ) {
   }
 }
 
-
-// --------------------------------------------------------------------------
-// initDishes2
-// inits the dishes (current and future)
-// (Buggy: attempts to declare only 1 half of the array, plus boundary
-//  rows, depending on rank.  Needs a bit more debugging...)
-void initDishes2( int rank ) {
-  int i;
-
-  // init to null all entries.  This way we'll be
-  // able to tell if a row belongs to us or not.
-  for ( i=0; i<NUMBERROWS; i++ ) {
-    DISH0[i] = NULL;
-    DISH1[i] = NULL;
-  }
-
-  //--- Init RANK 0 rows ---
-  if ( rank == 0 ) {
-    //--- initialize dishes with lower half of pattern ---
-    for (i = 0; i< NUMBERROWS/2+1; i++ )  {
-    
-      DISH0[i] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-      strcpy( DISH0[i], PATTERN[i] );
-
-      DISH1[i] = (char *) malloc( (strlen( DISH0[0] )+1) * sizeof( char )  );
-      strcpy( DISH1[i], DISH0[i] );
-    }
-
-    //--- initialize top row of dishes, as they are neighbors of Row 0 ---
-    DISH0[NUMBERROWS-1] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH0[NUMBERROWS-1], PATTERN[NUMBERROWS-1] );
-    DISH1[NUMBERROWS-1] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH1[NUMBERROWS-1], PATTERN[NUMBERROWS-1] );
-  }
-
-  //--- Init RANK 1 rows ---
-  if ( rank == 1 ) {
-    //--- initialize dishes with upper half of pattern ---                                                                               
-    for (i = NUMBERROWS/2-1; i< NUMBERROWS; i++ )  {
-
-      DISH0[i] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-      strcpy( DISH0[i], PATTERN[i] );
-
-      DISH1[i] = (char *) malloc( (strlen( DISH0[0] )+1) * sizeof( char )  );
-      strcpy( DISH1[i], DISH0[i] );
-    }
-
-    //--- initialize bottom row of dishes, as they are neighbors of top row  ---                                                       
-    DISH0[0] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH0[0], PATTERN[0] );
-    DISH1[0] = (char *) malloc( (strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH1[0], PATTERN[01] );
-  }
-}
-
-
-
 // --------------------------------------------------------------------------
 // print
 void print( char* dish[], int rank ) {
