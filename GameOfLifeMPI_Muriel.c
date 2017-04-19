@@ -1,5 +1,6 @@
 /*  
-  Edited by Muriel Brunet
+  Generalized for N processes
+  Muriel Brunet
   Parallel and Distributed Computing
   CSC 352 Smith College 
   Spring 2017
@@ -80,8 +81,8 @@ int ROWSIZE = (int) strlen( "                                                   
 //------------------------------- prototypes --------------------------------
 void life( char**, char**, int , int, int );
 void initDishes( int  );
-void print( char **, int );
-
+void print( char **, int, int, int );
+// void combineFinalDishes( );
 // --------------------------------------------------------------------------
 // initDishes
 // inits the dishes (current and future)
@@ -103,27 +104,16 @@ void initDishes( int rank ) {
 
 // --------------------------------------------------------------------------
 // print
-void print( char* dish[], int rank ) {
+void print( char* dish[], int rank, int lowerRow, int upperRow ) {
   int i;
 
-  if ( rank == 0 ) {
-    //--- display lower half only ---
-    for (i=0; i<NUMBERROWS/2; i++ ) {
-      if ( dish[i] == NULL ) continue;
-      pos( i, 0 );
-      printf( "%s\n", dish[i] );
-    }
-  }
+  //--- display only the section that this process has calculated ---
+  for (i=lowerRow; i<=upperRow; i++ ) {
+    if ( dish[i] == NULL ) continue;
+    pos( i, 0 );
+    printf( "%s\n", dish[i] );
+  }  
 
-  if ( rank == 1 ) {
-    //--- display upper half only ---
-    for (i=NUMBERROWS/2; i<NUMBERROWS; i++ ) {
-      if ( dish[i] == NULL ) continue;
-      pos( i, 0 );
-      printf( "%s\n", dish[i] );
-    }
-
-  }
 }
 
 // --------------------------------------------------------------------------
@@ -236,6 +226,18 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
   }
 }
 
+// void combineFinalDishes(){
+//   //--- if manager, receive all the computed dish pieces from each process ---
+//   //--- combine these dish pieces into a single array ---
+//   if( rank==0 ){
+//     MPI_Recv( finalDish,   NUMBERROWS, ); // dish
+//     MPI_Recv(); // first row of section
+//     MPI_Recv(); // last row of section
+//     // copy data over
+//   } else {
+//     MPI_Send( future);
+//   }
+// }
 
 // --------------------------------------------------------------------------
 int main( int argc, char* argv[] ) {
@@ -243,7 +245,7 @@ int main( int argc, char* argv[] ) {
   int i, nextProcess, prevProcess;
   int sizeOfSection, lastRow, firstRow;
   int n;                // # of processes/tasks
-  char **dish, **future, **temp;
+  char **dish, **future, **temp, **finalDish;
 
   //--- MPI Variables ---
   int noTasks = 0;
@@ -255,7 +257,17 @@ int main( int argc, char* argv[] ) {
 
   //--- get number of tasks, and make sure it's 2 ---
   MPI_Comm_size( MPI_COMM_WORLD, &noTasks );
-  n = noTasks; // number of tasks/processes
+  if( noTasks % 2 != 0){
+    printf( "Number of Processes/Tasks must be even.  Number = %d\n\n", noTasks );
+    MPI_Finalize();
+    return 1;
+  } else {
+    n = noTasks; // number of tasks/processes
+  }
+
+  if ( noTasks != 2 ) {
+
+  }
 
   //--- get rank ---
   MPI_Comm_rank( MPI_COMM_WORLD, &rank );
@@ -265,6 +277,8 @@ int main( int argc, char* argv[] ) {
 
   dish   = DISH0;
   future = DISH1;
+  finalDish = DISH0; //just to mark the define the size of the dish, data will be overwritten
+  //finalDish[NUMBERROWS] ??
 
   //check( dish, future );
 
@@ -309,6 +323,7 @@ int main( int argc, char* argv[] ) {
     //--- if rank is odd, then send ---
     //--- if rank is even, then receive ---
     if(rank % 2 == 0){ //even
+    //          buffer              #items  item-size     src/dest tag          world  
       MPI_Send( future[firstRow],   ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
       MPI_Send( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
       MPI_Recv( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
@@ -327,8 +342,10 @@ int main( int argc, char* argv[] ) {
     future = temp;
   }
 
+  //combineFinalDishes();
+
   //--- display the last generation ---
-  print(dish, rank);
+  print(dish, rank, firstRow, lastRow);
 
   //--- close MPI ---
   pos( 30+rank, 0 );
