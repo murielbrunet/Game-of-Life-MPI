@@ -306,7 +306,7 @@ int main( int argc, char* argv[] ) {
   lastRow = firstRow + sizeOfSection; //assign rows based on rank
 
   // display the new generation
-  print( dish, rank, firstRow, lastRow );
+  //print( dish, rank, firstRow, lastRow );
 
   if(rank == 0){
     prevProcess = n - 1;
