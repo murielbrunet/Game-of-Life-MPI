@@ -253,7 +253,7 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
 
 // --------------------------------------------------------------------------
 int main( int argc, char* argv[] ) {
-  int gens = 30;      // # of generations
+  int gens = 3000;      // # of generations
   int i, nextProcess, prevProcess;
   int sizeOfSection, lastRow, firstRow;
   int n;                // # of processes/tasks
@@ -299,7 +299,7 @@ int main( int argc, char* argv[] ) {
   //check( dish, future );
 
   //--- clear screen ---
-  cls();
+  //cls();
 
   sizeOfSection = NUMBERROWS/n;
   firstRow =  sizeOfSection * rank; //give rows based on rank
@@ -354,7 +354,7 @@ int main( int argc, char* argv[] ) {
   }
 
   //--- display the last generation ---
-  print(dish, rank, firstRow, lastRow);
+  //print(dish, rank, firstRow, lastRow);
 
   //--- close MPI ---
   pos( 30+rank, 0 );
