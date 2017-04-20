@@ -99,20 +99,18 @@ void initDishes( int rank ) {
   }
 }
 
-
-
-
 // --------------------------------------------------------------------------
 // print
-void print( char* dish[], int rank, int lowerRow, int upperRow ) {
+void print( char* dish[], int rank, int firstRow, int lastRow ) {
   int i;
 
-  //--- display only the section that this process has calculated ---
-  for (i=lowerRow; i<=upperRow; i++ ) {
+  printf("RANK %d--------------------------------\n", rank);
+
+  for (i=firstRow; i<=lastRow; i++ ) {
     if ( dish[i] == NULL ) continue;
     pos( i, 0 );
     printf( "%s\n", dish[i] );
-  }  
+  }
 
 }
 
@@ -149,26 +147,6 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
   int i, j, k, row;
   int rowLength = (int) strlen( dish[0] );
   int dishLength = NUMBERROWS;
-  
-  //--- slice the dish into n parts                                   ---
-  //--- loop through and asign lowerRow and upperRow to each process  ---
-  //--- based on ranking                                              ---
-
-  // int sizeOfSection = NUMBERROWS/n; //n hasn't been defined yet
-
-  // lowerRow = 0;
-  // upperRow = sizeOfSection;
-  // for(k = 0; k <= n; k++){    
-  //   if(rank == k){  //if this is your rank, then keep the lowerRow and upperRow as they are
-  //     break;
-  //   }
-  //   lowerRow += sizeOfSection;
-  //   upperRow += sizeOfSection;
-  // }
-
-
-
-
 
   for (row = lowerRow; row < upperRow; row++) {// each row
     
@@ -226,17 +204,24 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
   }
 }
 
-// void combineFinalDishes(){
+// char** combineFinalDishes( int sectionSize , int firstRow, int lastRow){
+//   int i;
+
 //   //--- if manager, receive all the computed dish pieces from each process ---
 //   //--- combine these dish pieces into a single array ---
 //   if( rank==0 ){
-//     MPI_Recv( finalDish,   NUMBERROWS, ); // dish
-//     MPI_Recv(); // first row of section
-//     MPI_Recv(); // last row of section
-//     // copy data over
+//     //--- copy processes' computation one row at a time to finalDish ---    
+//     for(i = firstRow; i < sectionSize; i++){
+//       MPI_Recv( finalDish[i],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
+//     }
 //   } else {
-//     MPI_Send( future);
+//     //--- send computation one row at a time to manager ---
+//     for(i = firstRow; i <= lastRow; i++){
+//       //          buffer   #items   item-size src/dest  tag          world  
+//       MPI_Send( future[i],  ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD ); 
+//     }
 //   }
+//   return finalDish;
 // }
 
 // --------------------------------------------------------------------------
@@ -277,61 +262,54 @@ int main( int argc, char* argv[] ) {
 
   dish   = DISH0;
   future = DISH1;
-  finalDish = DISH0; //just to mark the define the size of the dish, data will be overwritten
-  //finalDish[NUMBERROWS] ??
 
   //check( dish, future );
 
   //--- clear screen ---
   cls();
 
-  //print( dish, rank );          // # first generation, in petri dish
+  sizeOfSection = NUMBERROWS/n;
+  firstRow =  sizeOfSection * rank; //give rows based on rank
+  lastRow = firstRow + sizeOfSection; //assign rows based on rank
+
+  // display the new generation
+  print( dish, rank, firstRow, lastRow );
+
+  if(rank == 0){
+    prevProcess = n - 1;
+  } else {
+    prevProcess = rank - 1;
+  }
+
+  if(rank == n - 1){ // if it's the last process
+    nextProcess = 0;
+  } else { 
+    nextProcess = rank + 1;
+  }
 
 
   // iterate over all generations
   for ( i = 0; i < gens; i++) {
     
     pos( 33+rank, 0 );
-    printf( "Rank %d: Generation %d\n", rank, i );
-
-    sizeOfSection = NUMBERROWS/n;
-    firstRow =  sizeOfSection * rank; //give rows based on rank
-    lastRow = firstRow + sizeOfSection; //assign rows based on rank
+    //printf( "Rank %d: Generation %d\n", rank, i );
 
     // apply the rules of life to the current population and 
     // generate the next generation.
     life( dish, future, rank , firstRow, lastRow );
 
-    // display the new generation
-    //print( dish, rank );
-    // if(rank != 0){
-    //   prevProcess = n - 1 ;
-    // } else {
-    //   prevProcess = rank - 1 ;
-    // }
-
-    // if(rank == n - 1){ //then give the next process in the circle will be process #0
-    //   nextProcess = 0;
-    // } else { 
-    //   nextProcess = rank + 1;
-    // }
-
-    prevProcess = rank - 1 ;
-    nextProcess = rank + 1;
-
-
     //--- if rank is odd, then send ---
     //--- if rank is even, then receive ---
     if(rank % 2 == 0){ //even
     //          buffer              #items  item-size     src/dest tag          world  
-      MPI_Send( future[firstRow],   ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
+      MPI_Send( future[firstRow],   ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD );
       MPI_Send( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
-      MPI_Recv( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
+      MPI_Recv( future[lastRow-1],  ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD, &status );
       MPI_Recv( future[firstRow],   ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
     } else { //odd
-      MPI_Recv( future[firstRow],   ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD, &status );
+      MPI_Recv( future[firstRow],   ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
       MPI_Recv( future[lastRow-1],  ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD, &status );
-      MPI_Send( future[lastRow-1],  ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD );
+      MPI_Send( future[lastRow-1],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD );
       MPI_Send( future[firstRow],   ROWSIZE, MPI_CHAR,    prevProcess,     0,  MPI_COMM_WORLD );
     }
 
@@ -342,14 +320,12 @@ int main( int argc, char* argv[] ) {
     future = temp;
   }
 
-  //combineFinalDishes();
-
   //--- display the last generation ---
   print(dish, rank, firstRow, lastRow);
 
   //--- close MPI ---
   pos( 30+rank, 0 );
-  printf( "Process %d done.  Exiting\n\n", rank );
+  //printf( "Process %d done.  Exiting\n\n", rank );
   MPI_Finalize();
 
   return 0;
