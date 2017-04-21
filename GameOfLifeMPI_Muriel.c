@@ -28,7 +28,7 @@
  To compile and run, several different variants:
 
  mpicc.mpich -o GameOfLifeMPI_Muriel GameOfLifeMPI_Muriel.c
- mpiexec.mpich -n 2 ./GameOfLifeMPI_Muriel
+ mpiexec.mpich -n 2 ./GameOfLifeMPI_Muriel dish.txt
 
 */
 #include <stdio.h>
@@ -38,65 +38,62 @@
 #include <unistd.h>
 #include "mpi.h"
 
-#define NUMBERROWS 28
+// ------------------------------------- MACROS ----------------------------------------
+// #define NUMBERROWS 28
 #define esc 27
 #define cls() printf("%c[2J",esc)
 #define pos(row,col) printf("%c[%d;%dH",esc,row,col)
 
-
-char  *DISH0[ NUMBERROWS ];
-char  *DISH1[ NUMBERROWS ];
-char  *PATTERN[NUMBERROWS] = {
-  "                                                                                  ",
-  "   #                                                                              ",
-  " # #                                            ###                               ",
-  "  ##                                                                              ",
-  "                                                                                  ",
-  "                                                      #                           ",
-  "                                                    # #                           ",
-  "                                                     ##                           ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "             #                                                                    ",
-  "           # #                                                                    ",
-  "            ##                                                                    ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  ",
-  "                                                                                  " 
-};
-int ROWSIZE = (int) strlen( "                                                                                  ") + 1;
+// ------------------------------------- GLOBALS ----------------------------------------
+int   NUMBERROWS;
+char  **DISH0;
+char  **DISH1;
+int   ROWSIZE = (int) strlen( "                                                                                  ") + 1;
 
 //------------------------------- prototypes --------------------------------
 void life( char**, char**, int , int, int );
-void initDishes( int  );
+void initDishes( char* );
 void print( char **, int, int, int );
 // void combineFinalDishes( );
 // --------------------------------------------------------------------------
 // initDishes
 // inits the dishes (current and future)
-void initDishes( int rank ) {
-  int i;
+void initDishes( char* fileName ) {
+  int i, n;
+  char ch, buffer[10000];
 
-  //--- initialize other dish with spaces.  Make it same dimension as DISH0. ---
-  for (i = 0; i< NUMBERROWS; i++ )  {
-    DISH0[i] = (char *) malloc( ( strlen( PATTERN[0] ) + 1 ) * sizeof( char ) );
-    strcpy( DISH0[i], PATTERN[i] );
-
-    DISH1[i] = (char *) malloc( (strlen( DISH0[0] )+1) * sizeof( char )  );
-    strcpy( DISH1[i], PATTERN[i] );
+  //--- read # of lines first ---
+  FILE *f = fopen( fileName, "r" );
+  int noLines = 0;
+  while ( !feof( f ) ) {
+    ch = fgetc( f );
+    if (ch == '\n') noLines++;
   }
+  fclose( f );
+
+  //--- set global ---
+  NUMBERROWS = noLines;
+  //printf( "number of lines = %d\n", noLines );
+
+  //--- initialize DISH arrays ---
+  DISH0 = (char **) malloc( noLines * sizeof( char* ) );
+  DISH1 = (char **) malloc( noLines * sizeof( char* ) );
+
+  //--- read file again and initialize arrays ---
+  f = fopen( fileName, "r" );
+  i = 0;
+  while ( !feof( f ) ) {
+    fgets( buffer, 10000, f );
+    if ( feof( f ) )
+      break;
+    buffer[9999] = '\0';
+    DISH0[i] = (char *) malloc( (strlen( buffer ) + 1 ) * sizeof( char ) );
+    strcpy( DISH0[i], buffer );
+    DISH1[i] = (char *) malloc( (strlen( DISH0[i] ) + 1 ) * sizeof( char )  );
+    strcpy( DISH1[i], DISH0[i] );
+    i++;
+  }
+  fclose( f );
 }
 
 // --------------------------------------------------------------------------
@@ -205,32 +202,25 @@ void  life( char** dish, char** newGen, int rank, int lowerRow, int upperRow ) {
 }
 
 // char** combineFinalDishes( int sectionSize , int firstRow, int lastRow){
-//   int i;
 
-//   //--- if manager, receive all the computed dish pieces from each process ---
-//   //--- combine these dish pieces into a single array ---
-//   if( rank==0 ){
-//     //--- copy processes' computation one row at a time to finalDish ---    
-//     for(i = firstRow; i < sectionSize; i++){
-//       MPI_Recv( finalDish[i],  ROWSIZE, MPI_CHAR,    nextProcess,     0,  MPI_COMM_WORLD, &status );
-//     }
-//   } else {
-//     //--- send computation one row at a time to manager ---
-//     for(i = firstRow; i <= lastRow; i++){
-//       //          buffer   #items   item-size src/dest  tag          world  
-//       MPI_Send( future[i],  ROWSIZE, MPI_CHAR,    0,     0,  MPI_COMM_WORLD ); 
-//     }
-//   }
-//   return finalDish;
+    //if its the manager
+      //print out the dishes in order
+      //make a for loop and use the i as the number for the process to receive from
+      //create another for loop to print out the lines within this loop
+      //then go round again
+    //if its not the manager
+      //send the first row and last row
+
 // }
 
 // --------------------------------------------------------------------------
 int main( int argc, char* argv[] ) {
-  int gens = 30;      // # of generations
+  int gens = 3000;      // # of generations
   int i, nextProcess, prevProcess;
   int sizeOfSection, lastRow, firstRow;
   int n;                // # of processes/tasks
   char **dish, **future, **temp, **finalDish;
+  char* fileName;
 
   //--- MPI Variables ---
   int noTasks = 0;
@@ -250,11 +240,20 @@ int main( int argc, char* argv[] ) {
     n = noTasks; // number of tasks/processes
   }
 
+  if ( argc < 2 ) {
+    printf( "Syntax: ./GameOfLife2 dishFileName\n\n" );
+    return 1;
+  }
+
+  //--- get the file name from the command line ---
+  fileName = argv[1];
+
+
   //--- get rank ---
   MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
   //--- init the dishes as half of the original problem ---
-  initDishes( rank );
+  initDishes( fileName );
 
   dish   = DISH0;
   future = DISH1;
@@ -262,14 +261,14 @@ int main( int argc, char* argv[] ) {
   //check( dish, future );
 
   //--- clear screen ---
-  cls();
+  //cls();
 
   sizeOfSection = NUMBERROWS/n;
   firstRow =  sizeOfSection * rank; //give rows based on rank
   lastRow = firstRow + sizeOfSection; //assign rows based on rank
 
   // display the new generation
-  print( dish, rank, firstRow, lastRow );
+  //print( dish, rank, firstRow, lastRow );
 
   if(rank == 0){
     prevProcess = n - 1;
@@ -317,7 +316,7 @@ int main( int argc, char* argv[] ) {
   }
 
   //--- display the last generation ---
-  print(dish, rank, firstRow, lastRow);
+  //print(dish, rank, firstRow, lastRow);
 
   //--- close MPI ---
   pos( 30+rank, 0 );

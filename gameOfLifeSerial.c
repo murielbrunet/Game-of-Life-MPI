@@ -11,8 +11,8 @@
 
  To compile and run:
 
- gcc -o gameOfLifeSerial gameOfLifeSerial.c
- ./gameOfLifeSerial  dishFileName
+ gcc -o serialVersion serialVersion.c
+ time ./serialVersion  dish.txt > timingSerial.data
 
 
 */
@@ -162,7 +162,7 @@ void  life( char** dish, char** newGen ) {
         if (r == dishLength)
           realr = 0;
 
-        for (int j = i - 1; j <= i + 1; j++) {
+        for ( j = i - 1; j <= i + 1; j++) {
 
           // make sure we wrap around from left to right
           int realj = j;
